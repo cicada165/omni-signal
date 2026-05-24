@@ -43,6 +43,16 @@ PYTHONPATH=src python3 scripts/run_fmp_analyst_radar.py \
   --dry-run
 ```
 
+For a lower-cost plan that only fetches price-target endpoints:
+
+```bash
+PYTHONPATH=src python3 scripts/run_fmp_analyst_radar.py \
+  --watchlist config/watchlists/semiconductor_themes.json \
+  --output-dir data/digests \
+  --dry-run \
+  --summary-only
+```
+
 ## Live Smoke Test
 
 Run a small live sample after exporting `FMP_API_KEY`:
@@ -78,6 +88,7 @@ The CLI estimates calls before fetching data:
 - `unique_tickers * enabled_endpoints`
 - warn above 200 planned calls
 - require `--force` above 250 planned calls
+- `--summary-only` reduces enabled endpoints from 4 to 2
 
 The prototype keeps the endpoint list intentionally small:
 

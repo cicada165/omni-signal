@@ -11,6 +11,7 @@ The current branch contains a small FMP analyst-radar prototype. The goal is to 
 - Keep the free-tier test small enough to stay under 250 calls/day.
 - Treat FMP as an input signal, not as investment advice or an automated trading trigger.
 - Prefer deterministic scoring and explainable digest output before adding LLM summarization.
+- Use `--summary-only` for a lower-cost run when you only need price-target context.
 
 ## Current test command
 

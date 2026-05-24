@@ -121,3 +121,34 @@ class TestDigest(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             self.assertIn("estimated calls: 12", result.stdout)
+
+    def test_cli_summary_only_dry_run_estimates_lower_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            watchlist = Path(tmpdir) / "watchlist.json"
+            watchlist.write_text(
+                json.dumps({"theme_a": ["NVDA", "AMD"], "theme_b": ["AMD", "MU"]}),
+                encoding="utf-8",
+            )
+            env = dict(os.environ)
+            env.pop("FMP_API_KEY", None)
+            env["PYTHONPATH"] = "src"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/run_fmp_analyst_radar.py",
+                    "--watchlist",
+                    str(watchlist),
+                    "--output-dir",
+                    str(Path(tmpdir) / "out"),
+                    "--dry-run",
+                    "--summary-only",
+                ],
+                cwd=Path(__file__).resolve().parents[1],
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr)
+            self.assertIn("estimated calls: 6", result.stdout)
+            self.assertIn("mode: summary-only", result.stdout)

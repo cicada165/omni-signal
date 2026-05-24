@@ -14,6 +14,7 @@ from omni_signal.analyst_radar import (
     ENDPOINT_NAMES,
     collect_radar_data,
     estimate_call_count,
+    get_enabled_endpoint_names,
     load_watchlist,
     select_tickers,
 )
@@ -56,6 +57,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate inputs and estimate calls without hitting FMP.",
     )
     parser.add_argument(
+        "--summary-only",
+        "--theme-summary-only",
+        dest="summary_only",
+        action="store_true",
+        help="Fetch only price-target endpoints to minimize call volume.",
+    )
+    parser.add_argument(
         "--max-tickers",
         type=int,
         help="Limit the number of unique tickers after filtering and deduplication.",
@@ -73,19 +81,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     watchlist = load_watchlist(args.watchlist)
     selected_tickers = parse_csv(args.tickers)
     selected_themes = parse_csv(args.themes)
+    endpoint_names = get_enabled_endpoint_names(args.summary_only)
     _, unique_tickers = select_tickers(
         watchlist,
         tickers=selected_tickers,
         themes=selected_themes,
         max_tickers=args.max_tickers,
     )
-    estimated_call_count = estimate_call_count(unique_tickers, ENDPOINT_NAMES)
+    estimated_call_count = estimate_call_count(unique_tickers, endpoint_names)
 
     print("Planned FMP analyst radar run")
     print(f"- watchlist: {args.watchlist}")
     print(f"- unique tickers: {len(unique_tickers)}")
-    print(f"- endpoints per ticker: {len(ENDPOINT_NAMES)}")
+    print(f"- endpoints per ticker: {len(endpoint_names)}")
     print(f"- estimated calls: {estimated_call_count}")
+    print(f"- mode: {'summary-only' if args.summary_only else 'full'}")
     if unique_tickers:
         print(f"- tickers: {', '.join(unique_tickers)}")
     else:
@@ -115,6 +125,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             tickers=selected_tickers,
             themes=selected_themes,
             max_tickers=args.max_tickers,
+            endpoint_names=endpoint_names,
         )
     except FMPClientError as exc:
         print(f"FMP client error: {exc}", file=sys.stderr)
@@ -128,6 +139,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "selected_tickers": plan.selected_tickers,
         "unique_tickers": plan.unique_tickers,
         "endpoint_names": plan.endpoint_names,
+        "summary_only": args.summary_only,
         "estimated_call_count": plan.estimated_call_count,
         "dry_run": False,
     }

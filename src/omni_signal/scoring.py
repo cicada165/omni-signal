@@ -21,6 +21,7 @@ def score_snapshot(snapshot: Mapping[str, Any]) -> Dict[str, Any]:
     rating_score = _as_float(metrics.get("rating_score"))
     eps_current = _as_float(metrics.get("estimate_eps_current"))
     eps_previous = _as_float(metrics.get("estimate_eps_previous"))
+    revision_direction = metrics.get("estimate_revision_direction")
 
     target_value = consensus_target if consensus_target is not None else average_target
     if current_price is not None and target_value is not None:
@@ -70,6 +71,16 @@ def score_snapshot(snapshot: Mapping[str, Any]) -> Dict[str, Any]:
             signals.append("estimate revisions trending upward")
         elif eps_current < eps_previous:
             score -= 10
+            signals.append("estimate revisions trending lower")
+        else:
+            signals.append("estimate revisions flat")
+    elif revision_direction in {"up", "down", "flat"}:
+        completeness += 1
+        if revision_direction == "up":
+            score += 8
+            signals.append("estimate revisions trending upward")
+        elif revision_direction == "down":
+            score -= 8
             signals.append("estimate revisions trending lower")
         else:
             signals.append("estimate revisions flat")

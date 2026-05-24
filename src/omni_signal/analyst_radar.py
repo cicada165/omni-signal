@@ -10,14 +10,27 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .fmp_client import FMPClient
+from .fmp_parsers import (
+    parse_analyst_estimates,
+    parse_price_target_consensus,
+    parse_price_target_summary,
+    parse_ratings_snapshot,
+)
 
 
-ENDPOINT_NAMES = [
+FULL_ENDPOINT_NAMES = [
     "price_target_consensus",
     "price_target_summary",
     "analyst_estimates",
     "ratings_snapshot",
 ]
+
+SUMMARY_ENDPOINT_NAMES = [
+    "price_target_consensus",
+    "price_target_summary",
+]
+
+ENDPOINT_NAMES = list(FULL_ENDPOINT_NAMES)
 
 
 @dataclass(frozen=True)
@@ -77,21 +90,42 @@ def estimate_call_count(unique_tickers: Sequence[str], endpoint_names: Sequence[
     return len(list(unique_tickers)) * len(list(endpoint_names))
 
 
+def get_enabled_endpoint_names(summary_only: bool = False) -> List[str]:
+    return list(SUMMARY_ENDPOINT_NAMES if summary_only else FULL_ENDPOINT_NAMES)
+
+
 def collect_ticker_snapshot(
     client: FMPClient,
     ticker: str,
     theme_names: Sequence[str],
+    endpoint_names: Sequence[str] = ENDPOINT_NAMES,
 ) -> Dict[str, Any]:
     collected_at = datetime.now(timezone.utc).isoformat()
     snapshot = {
         "ticker": ticker,
         "theme_names": list(theme_names),
-        "price_target": _normalize_object_payload(client.get_price_target_consensus(ticker)),
-        "price_target_summary": _normalize_object_payload(client.get_price_target_summary(ticker)),
-        "analyst_estimates": _normalize_estimates(client.get_analyst_estimates(ticker)),
-        "ratings_snapshot": _normalize_object_payload(client.get_ratings_snapshot(ticker)),
+        "price_target": {},
+        "price_target_summary": {},
+        "analyst_estimates": [],
+        "ratings_snapshot": {},
         "collected_at": collected_at,
     }
+    if "price_target_consensus" in endpoint_names:
+        snapshot["price_target"] = parse_price_target_consensus(
+            client.get_price_target_consensus(ticker)
+        )
+    if "price_target_summary" in endpoint_names:
+        snapshot["price_target_summary"] = parse_price_target_summary(
+            client.get_price_target_summary(ticker)
+        )
+    if "analyst_estimates" in endpoint_names:
+        snapshot["analyst_estimates"] = parse_analyst_estimates(
+            client.get_analyst_estimates(ticker)
+        )
+    if "ratings_snapshot" in endpoint_names:
+        snapshot["ratings_snapshot"] = parse_ratings_snapshot(
+            client.get_ratings_snapshot(ticker)
+        )
     return snapshot
 
 
@@ -102,6 +136,7 @@ def collect_radar_data(
     tickers: Optional[Sequence[str]] = None,
     themes: Optional[Sequence[str]] = None,
     max_tickers: Optional[int] = None,
+    endpoint_names: Sequence[str] = ENDPOINT_NAMES,
 ) -> Tuple[RadarRunPlan, List[Dict[str, Any]]]:
     selected_themes, unique_tickers = select_tickers(
         watchlist, tickers=tickers, themes=themes, max_tickers=max_tickers
@@ -110,14 +145,16 @@ def collect_radar_data(
     snapshots: List[Dict[str, Any]] = []
     for ticker in unique_tickers:
         snapshots.append(
-            collect_ticker_snapshot(client, ticker, theme_map.get(ticker, []))
+            collect_ticker_snapshot(
+                client, ticker, theme_map.get(ticker, []), endpoint_names=endpoint_names
+            )
         )
     plan = RadarRunPlan(
         selected_themes=selected_themes,
         selected_tickers=list(tickers) if tickers else [],
         unique_tickers=unique_tickers,
-        estimated_call_count=estimate_call_count(unique_tickers),
-        endpoint_names=list(ENDPOINT_NAMES),
+        estimated_call_count=estimate_call_count(unique_tickers, endpoint_names),
+        endpoint_names=list(endpoint_names),
     )
     return plan, snapshots
 
@@ -129,33 +166,6 @@ def _theme_map(watchlist: Mapping[str, Sequence[str]]) -> Dict[str, List[str]]:
             if theme_name not in mapping[ticker]:
                 mapping[ticker].append(theme_name)
     return mapping
-
-
-def _normalize_object_payload(payload: Any) -> Dict[str, Any]:
-    if payload is None:
-        return {}
-    if isinstance(payload, dict):
-        return payload
-    if isinstance(payload, list):
-        if not payload:
-            return {}
-        first = payload[0]
-        if isinstance(first, dict):
-            return first
-        return {"items": payload}
-    return {"value": payload}
-
-
-def _normalize_estimates(payload: Any) -> List[Dict[str, Any]]:
-    if not payload:
-        return []
-    if isinstance(payload, list):
-        return [item for item in payload if isinstance(item, dict)]
-    if isinstance(payload, dict):
-        if "data" in payload and isinstance(payload["data"], list):
-            return [item for item in payload["data"] if isinstance(item, dict)]
-        return [payload]
-    return []
 
 
 def extract_metric_fields(snapshot: Mapping[str, Any]) -> Dict[str, Any]:
@@ -171,50 +181,90 @@ def extract_metric_fields(snapshot: Mapping[str, Any]) -> Dict[str, Any]:
         ratings_snapshot = {}
     if not isinstance(analyst_estimates, list):
         analyst_estimates = []
-    latest_estimate = analyst_estimates[0] if analyst_estimates else {}
+    latest_estimate = analyst_estimates[0] if analyst_estimates and isinstance(analyst_estimates[0], Mapping) else {}
     return {
-        "current_price": _first_present(price_target, "price", "currentPrice", "current_price"),
-        "consensus_price_target": _first_present(
+        "current_price": _pick_first(
             price_target,
-            "consensusPriceTarget",
+            "current_price",
+            "price",
+            "currentPrice",
+            "current_price",
+        )
+        or _pick_first(price_target_summary, "current_price", "price", "currentPrice"),
+        "consensus_price_target": _pick_first(
+            price_target,
             "consensus_price_target",
+            "consensusPriceTarget",
             "targetConsensus",
             "target_price",
+            "meanTargetPrice",
+            "avgPriceTarget",
         ),
-        "average_price_target": _first_present(
+        "average_price_target": _pick_first(
             price_target_summary,
+            "average_price_target",
             "averagePriceTarget",
             "avgPriceTarget",
             "priceTarget",
             "consensusPriceTarget",
+            "meanTargetPrice",
+        )
+        or _pick_first(
+            price_target,
+            "consensus_price_target",
+            "consensusPriceTarget",
+            "targetConsensus",
+            "target_price",
+            "meanTargetPrice",
+            "avgPriceTarget",
         ),
-        "rating": _first_present(
+        "rating": _pick_first(
             ratings_snapshot,
             "rating",
             "overallRating",
             "analystRating",
             "recommendation",
         ),
-        "rating_score": _first_present(
-            ratings_snapshot,
-            "score",
-            "overallScore",
-            "ratingScore",
+        "rating_score": _pick_first(
+            ratings_snapshot, "rating_score", "score", "overallScore", "ratingScore"
         ),
-        "estimate_eps_current": _first_present(
-            latest_estimate, "estimatedEpsAvg", "epsEstimateAvg", "epsAvg", "eps"
-        ),
-        "estimate_eps_previous": _first_present(
+        "estimate_eps_current": _pick_first(
             latest_estimate,
+            "estimated_eps_avg",
+            "estimatedEpsAvg",
+            "epsEstimateAvg",
+            "epsAvg",
+            "eps",
+        ),
+        "estimate_eps_previous": _pick_first(
+            latest_estimate,
+            "estimated_eps_avg_prior",
             "estimatedEpsAvgPrior",
             "epsEstimateAvgPrior",
             "epsAvgPrior",
             "previousEps",
         ),
+        "estimate_revision_direction": latest_estimate.get("revision_direction"),
+        "analyst_count": _pick_first(
+            price_target,
+            "analyst_count",
+            "numberOfAnalysts",
+            "analystsCount",
+            "analystCount",
+            "numAnalysts",
+        )
+        or _pick_first(
+            price_target_summary,
+            "analyst_count",
+            "numberOfAnalysts",
+            "analystsCount",
+            "analystCount",
+            "numAnalysts",
+        ),
     }
 
 
-def _first_present(mapping: Mapping[str, Any], *keys: str) -> Any:
+def _pick_first(mapping: Mapping[str, Any], *keys: str) -> Any:
     for key in keys:
         value = mapping.get(key)
         if value not in (None, "", []):
