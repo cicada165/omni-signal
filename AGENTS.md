@@ -12,6 +12,7 @@ The current branch contains a small FMP analyst-radar prototype. The goal is to 
 - Treat FMP as an input signal, not as investment advice or an automated trading trigger.
 - Prefer deterministic scoring and explainable digest output before adding LLM summarization.
 - Use `--summary-only` for a lower-cost run when you only need price-target context.
+- Use `--cache-dir` for repeat live runs so previously fetched JSON responses can be reused locally.
 
 ## Current test command
 

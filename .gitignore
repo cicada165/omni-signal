@@ -8,5 +8,6 @@ __pycache__/
 .coverage
 coverage.xml
 data/digests/
+data/cache/
 *.log
 .DS_Store

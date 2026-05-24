@@ -64,6 +64,16 @@ PYTHONPATH=src python3 scripts/run_fmp_analyst_radar.py \
   --max-tickers 3
 ```
 
+To reuse previously fetched JSON responses on repeat runs, add a local cache directory:
+
+```bash
+PYTHONPATH=src python3 scripts/run_fmp_analyst_radar.py \
+  --watchlist config/watchlists/semiconductor_themes.json \
+  --output-dir data/digests \
+  --max-tickers 3 \
+  --cache-dir data/cache/fmp
+```
+
 You can also narrow the run:
 
 ```bash
@@ -89,6 +99,7 @@ The CLI estimates calls before fetching data:
 - warn above 200 planned calls
 - require `--force` above 250 planned calls
 - `--summary-only` reduces enabled endpoints from 4 to 2
+- `--cache-dir` reuses prior successful responses for repeat runs
 
 The prototype keeps the endpoint list intentionally small:
 
@@ -105,6 +116,8 @@ The CLI writes local digest files under `data/digests/`:
 - `latest.md`
 
 These are generated artifacts and should not be committed.
+
+If you use the optional cache, its files live under `data/cache/` and should also stay uncommitted.
 
 ## Analyst Use
 

@@ -73,6 +73,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Allow call estimates above the hard budget threshold.",
     )
+    parser.add_argument(
+        "--cache-dir",
+        help="Optional local response cache directory for repeat live runs.",
+    )
     return parser
 
 
@@ -118,7 +122,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     try:
-        client = FMPClient()
+        client = FMPClient(cache_dir=args.cache_dir)
         plan, snapshots = collect_radar_data(
             client,
             watchlist,
@@ -140,6 +144,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "unique_tickers": plan.unique_tickers,
         "endpoint_names": plan.endpoint_names,
         "summary_only": args.summary_only,
+        "cache_dir": args.cache_dir,
         "estimated_call_count": plan.estimated_call_count,
         "dry_run": False,
     }

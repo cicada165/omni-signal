@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -43,3 +44,20 @@ class TestFMPClient(unittest.TestCase):
         called_request = mock_urlopen.call_args.args[0]
         self.assertIn("apikey=test-secret", called_request.full_url)
         self.assertNotIn("test-secret", client.redact_url(called_request.full_url))
+
+    @patch("omni_signal.fmp_client.urlopen")
+    def test_cache_dir_reuses_cached_response(self, mock_urlopen) -> None:
+        response = Mock()
+        response.read.return_value = b'{"cached": true}'
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        mock_urlopen.return_value = response
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            client = FMPClient(cache_dir=tmpdir)
+            first = client.get_ratings_snapshot("NVDA")
+            second = client.get_ratings_snapshot("NVDA")
+
+        self.assertEqual(first, {"cached": True})
+        self.assertEqual(second, {"cached": True})
+        self.assertEqual(mock_urlopen.call_count, 1)
