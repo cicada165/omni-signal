@@ -2,7 +2,7 @@
 
 ## Prototype scope
 
-The current branch contains a small FMP analyst-radar prototype. The goal is to detect early market theme shifts from analyst-derived data rather than scraping websites or asking an agent to infer signals from raw filings/news/prices.
+The current branch contains a small FMP analyst-radar prototype. The goal is to detect early market theme shifts from analyst-derived data rather than scraping websites or asking an agent to infer signals from raw filings, news, or prices.
 
 ## Guardrails
 
@@ -15,14 +15,14 @@ The current branch contains a small FMP analyst-radar prototype. The goal is to 
 ## Current test command
 
 ```bash
-PYTHONPATH=src python -m unittest discover -s tests -p 'test*.py'
+PYTHONPATH=src python3 -m unittest discover -s tests -p 'test*.py'
 ```
 
 ## Manual live smoke test
 
 ```bash
 export FMP_API_KEY="..."
-PYTHONPATH=src python scripts/run_fmp_analyst_radar.py \
+PYTHONPATH=src python3 scripts/run_fmp_analyst_radar.py \
   --watchlist config/watchlists/semiconductor_themes.json \
   --output-dir data/digests
 ```

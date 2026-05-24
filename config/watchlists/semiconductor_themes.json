@@ -1,0 +1,46 @@
+{
+  "memory_hbm": [
+    "MU",
+    "WDC",
+    "STX",
+    "NVDA",
+    "AMD",
+    "AVGO",
+    "MRVL"
+  ],
+  "semiconductor_cycle": [
+    "NVDA",
+    "AMD",
+    "AVGO",
+    "TSM",
+    "ASML",
+    "ARM",
+    "INTC",
+    "QCOM",
+    "TXN",
+    "ON",
+    "ADI",
+    "MU"
+  ],
+  "semiconductor_equipment": [
+    "AMAT",
+    "LRCX",
+    "KLAC",
+    "ASML",
+    "TER",
+    "AEIS"
+  ],
+  "ai_infrastructure_power_cooling": [
+    "VRT",
+    "ETN",
+    "PWR",
+    "CEG",
+    "VST",
+    "SMR",
+    "ORCL",
+    "MSFT",
+    "AMZN",
+    "GOOGL",
+    "META"
+  ]
+}

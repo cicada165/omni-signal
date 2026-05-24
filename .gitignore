@@ -3,5 +3,10 @@ __pycache__/
 .venv/
 .env
 .env.*
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
 data/digests/
+*.log
 .DS_Store
